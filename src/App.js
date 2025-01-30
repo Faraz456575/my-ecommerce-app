@@ -12,6 +12,16 @@ import Login from './Login';
 function App() {
   const [cart, setCart] = useState([]);
   const [user, setUser] = useState(null);
+  const [tableNumber, setTableNumber] = useState("1"); // Default to "1"
+
+  // Use useParams to capture the table number from the URL
+  const { tableNumber: tableFromURL } = useParams(); // Get table number from URL path
+  useEffect(() => {
+    if (tableFromURL) {
+      setTableNumber(tableFromURL); // Update table number state
+    }
+    console.log("Table Number from URL:", tableFromURL || "1");
+  }, [tableFromURL]); // Run whenever tableFromURL changes
 
   // Listen for user authentication state
   useEffect(() => {
@@ -26,7 +36,7 @@ function App() {
     alert(`${product.name} added to cart!`);
   };
 
-  const placeOrder = async (tableNumber) => {
+  const placeOrder = async () => {
     if (cart.length === 0) return;
 
     const orderTime = new Date().toLocaleString();
@@ -65,31 +75,22 @@ function App() {
         </Toolbar>
       </AppBar>
 
+      <h1>Your Cart ({cart.length} items)</h1>
+      <h2>Table Number: {tableNumber}</h2> {/* Display Table Number for Debugging */}
+
       <Routes>
-        <Route path="/" element={<ProductList addToCart={addToCart} />} />
-        <Route path="/cart" element={<Cart cart={cart} placeOrder={placeOrder} />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/admin" element={user ? <AdminPanel /> : <Navigate to="/login" />} />
-        <Route path="/table/:id" element={<TablePage cart={cart} addToCart={addToCart} placeOrder={placeOrder} />} />
-      </Routes>
+  <Route path="/" element={<ProductList addToCart={addToCart} />} />
+  <Route path="/cart" element={<Cart cart={cart} placeOrder={placeOrder} />} />
+  <Route path="/table/:tableNumber" element={<ProductList addToCart={addToCart} />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/admin" element={user ? <AdminPanel /> : <Navigate to="/login" />} />
+</Routes>
+
     </div>
   );
 }
 
-const TablePage = ({ cart, addToCart, placeOrder }) => {
-  const { id } = useParams(); // Access the dynamic table ID from the URL
-  const tableNumber = id || "1"; // Default to "1" if no table number is provided
-
-  return (
-    <div>
-      <h1>Table {tableNumber}</h1>
-      <ProductList addToCart={addToCart} />
-      <Button variant="contained" onClick={() => placeOrder(tableNumber)}>
-        Place Order for Table {tableNumber}
-      </Button>
-    </div>
-  );
-};
-
 export default App;
+
+
 
