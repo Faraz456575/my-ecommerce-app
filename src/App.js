@@ -38,7 +38,7 @@ function App() {
         items: cart,
         totalPrice: cart.reduce((total, item) => total + item.price, 0),
         timestamp: new Date(),
-        tableNumber: tableNumber, // Now correctly retains table number
+        tableNumber: tableNumber, // Store table number in the order
         orderTime: orderTime,
         status: "new"
       });
@@ -92,4 +92,5 @@ const TablePage = ({ cart, addToCart, placeOrder }) => {
 };
 
 export default App;
+
 
