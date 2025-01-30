@@ -79,11 +79,13 @@ function App() {
       <h2>Table Number: {tableNumber}</h2> {/* Display Table Number for Debugging */}
 
       <Routes>
-        <Route path="/" element={<ProductList addToCart={addToCart} />} />
-        <Route path="/cart" element={<Cart cart={cart} placeOrder={placeOrder} />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/admin" element={user ? <AdminPanel /> : <Navigate to="/login" />} />
-      </Routes>
+  <Route path="/" element={<ProductList addToCart={addToCart} />} />
+  <Route path="/cart" element={<Cart cart={cart} placeOrder={placeOrder} />} />
+  <Route path="/table/:tableNumber" element={<ProductList addToCart={addToCart} />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/admin" element={user ? <AdminPanel /> : <Navigate to="/login" />} />
+</Routes>
+
     </div>
   );
 }
