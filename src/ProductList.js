@@ -1,24 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Grid, Card, CardContent, Typography, Button } from "@mui/material";
+import { db, collection, getDocs } from './firebase'; // Import Firestore methods
 
-// Sample product data (Replace with dynamic data if needed)
-const products = [
-  {
-    id: 1,
-    name: "Breast Cubes 1Kg",
-    price: 520,
-    image: "apk.png" ,
-    category: "Chicken",
-  },
-  {
-    id: 2,
-    name: "Leg Pieces 500g",
-    price: 250,
-    image: "path/to/image2.jpg",
-    category: "Chicken",
-  },
-  // Add more products as necessary...
-];
+// Fetch products from Firestore
+function ProductList({ addToCart }) {
+  const [products, setProducts] = useState([]);
+
+  // Fetch products from Firestore when component mounts
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "products"));
+        const productsArray = querySnapshot.docs.map(doc => ({
+          id: doc.id, // Unique document ID
+          ...doc.data() // Get all data from the document
+        }));
+        setProducts(productsArray);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  return (
+    <Grid container spacing={3}>
+      {products.map((product) => (
+        <ProductCard key={product.id} product={product} addToCart={addToCart} />
+      ))}
+    </Grid>
+  );
+}
 
 function ProductCard({ product, addToCart }) {
   return (
@@ -37,15 +49,6 @@ function ProductCard({ product, addToCart }) {
   );
 }
 
-function ProductList({ addToCart }) {
-  return (
-    <Grid container spacing={3}>
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} addToCart={addToCart} />
-      ))}
-    </Grid>
-  );
-}
-
 export default ProductList;
+
 
