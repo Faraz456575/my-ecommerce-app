@@ -44,6 +44,7 @@ const db = getFirestore(app);
 export { auth, db, collection, addDoc, onSnapshot, query, orderBy };  // Export query and orderBy
 
 */
+// Import necessary Firebase SDK components
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { 
@@ -55,7 +56,6 @@ import {
   orderBy, 
   doc, 
   updateDoc, 
-   
 } from "firebase/firestore";
 
 // Your Firebase config (replace with your own credentials)
@@ -70,7 +70,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Get Firebase Auth instance
 const auth = getAuth(app);
+
+// Initialize Firestore database
 const db = getFirestore(app);
 
-export { auth, db, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc,  };
+// Export Firebase modules and functions
+export { auth, db, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc };
+
