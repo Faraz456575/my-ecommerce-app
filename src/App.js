@@ -1,27 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, Link, Navigate, useParams } from "react-router-dom";
+import { Routes, Route, Link, Navigate } from "react-router-dom";
 import { AppBar, Toolbar, Button } from "@mui/material";
-import { auth } from './firebase';
+import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { db, collection, addDoc } from './firebase';
-import ProductList from './ProductList';
-import Cart from './Cart';
-import AdminPanel from './AdminPanel';
-import Login from './Login';
+import { db, collection, addDoc } from "./firebase";
+import ProductList from "./ProductList";
+import Cart from "./Cart";
+import AdminPanel from "./AdminPanel";
+import Login from "./Login";
 
 function App() {
   const [cart, setCart] = useState([]);
   const [user, setUser] = useState(null);
-  const [tableNumber, setTableNumber] = useState("1"); // Default to "1"
-
-  // Use useParams to capture the table number from the URL
-  const { tableNumber: tableFromURL } = useParams(); // Get table number from URL path
-  useEffect(() => {
-    if (tableFromURL) {
-      setTableNumber(tableFromURL); // Update table number state
-    }
-    console.log("Table Number from URL:", tableFromURL || "1");
-  }, [tableFromURL]); // Run whenever tableFromURL changes
 
   // Listen for user authentication state
   useEffect(() => {
@@ -31,16 +21,17 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // Add product to cart
   const addToCart = (product) => {
-    setCart([...cart, product]);
+    setCart((prevCart) => [...prevCart, product]);
     alert(`${product.name} added to cart!`);
   };
 
-  const placeOrder = async () => {
+  // Place order function
+  const placeOrder = async (tableNumber) => {
     if (cart.length === 0) return;
 
     const orderTime = new Date().toLocaleString();
-
     console.log("Placing Order for Table Number:", tableNumber);
 
     try {
@@ -48,9 +39,9 @@ function App() {
         items: cart,
         totalPrice: cart.reduce((total, item) => total + item.price, 0),
         timestamp: new Date(),
-        tableNumber: tableNumber, // Now correctly retains table number
-        orderTime: orderTime,
-        status: "new"
+        tableNumber,
+        orderTime,
+        status: "new",
       });
 
       alert(`Order placed successfully for Table ${tableNumber}!`);
@@ -63,10 +54,11 @@ function App() {
 
   return (
     <div>
+      {/* Navigation Bar */}
       <AppBar position="static">
         <Toolbar>
           <Button color="inherit" component={Link} to="/">Home</Button>
-          <Button color="inherit" component={Link} to="/cart">Cart</Button>
+          <Button color="inherit" component={Link} to="/cart">Cart ({cart.length})</Button>
           {user ? (
             <Button color="inherit" component={Link} to="/admin">Admin Panel</Button>
           ) : (
@@ -75,17 +67,14 @@ function App() {
         </Toolbar>
       </AppBar>
 
-      <h1>Your Cart ({cart.length} items)</h1>
-      <h2>Table Number: {tableNumber}</h2> {/* Display Table Number for Debugging */}
-
+      {/* Routes Configuration */}
       <Routes>
-  <Route path="/" element={<ProductList addToCart={addToCart} />} />
-  <Route path="/cart" element={<Cart cart={cart} placeOrder={placeOrder} />} />
-  <Route path="/table/:tableNumber" element={<ProductList addToCart={addToCart} />} />
-  <Route path="/login" element={<Login />} />
-  <Route path="/admin" element={user ? <AdminPanel /> : <Navigate to="/login" />} />
-</Routes>
-
+        <Route path="/" element={<ProductList addToCart={addToCart} />} />
+        <Route path="/cart" element={<Cart cart={cart} placeOrder={placeOrder} />} />
+        <Route path="/table/:tableNumber" element={<ProductList addToCart={addToCart} />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin" element={user ? <AdminPanel /> : <Navigate to="/login" />} />
+      </Routes>
     </div>
   );
 }
