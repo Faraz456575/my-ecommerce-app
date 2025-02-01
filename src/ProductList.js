@@ -12,8 +12,8 @@ function ProductList({ addToCart }) {
       try {
         const querySnapshot = await getDocs(collection(db, "products"));
         const productsArray = querySnapshot.docs.map(doc => ({
-          id: doc.id, // Unique document ID
-          ...doc.data() // Get all data from the document
+          id: doc.id, 
+          ...doc.data()
         }));
         setProducts(productsArray);
       } catch (error) {
@@ -39,7 +39,7 @@ function ProductList({ addToCart }) {
 
   return (
     <div>
-      {/* Add Product Button */}
+      {/* Button to Add Product */}
       <Button variant="contained" color="secondary" onClick={addProduct} style={{ marginBottom: "20px" }}>
         Add Product
       </Button>
@@ -73,6 +73,7 @@ function ProductCard({ product, addToCart }) {
 }
 
 export default ProductList;
+
 
 
 
