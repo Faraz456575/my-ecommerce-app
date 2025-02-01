@@ -247,209 +247,148 @@ function AdminPanel() {
 export default AdminPanel;
 */import React, { useState, useEffect } from "react";
 import { db, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "./firebase";
-import { Table, TableHead, TableRow, TableCell, TableBody, Button, TextField } from "@mui/material";
+import { Table, TableHead, TableRow, TableCell, TableBody, Button, TextField, Grid, useMediaQuery } from "@mui/material";
 
 function AdminPanel() {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [productDetails, setProductDetails] = useState({ name: "", price: "", image: "" });
   const [editId, setEditId] = useState(null);
-  const [view, setView] = useState("orders"); // "orders" or "products"
+  const [view, setView] = useState("orders");
+  const [completedOrders, setCompletedOrders] = useState([]);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const isMobile = useMediaQuery("(max-width:600px)");
 
   useEffect(() => {
-    // Fetch Orders
-    const ordersQuery = query(collection(db, "orders"), orderBy("timestamp", "desc"));
-    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
-      setOrders(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    const newOrdersQuery = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+    const unsubscribeNew = onSnapshot(newOrdersQuery, (snapshot) => {
+      setOrders(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter((order) => !order.completed));
     });
 
-    // Fetch Products
+    const completedOrdersQuery = query(collection(db, "completedOrders"), orderBy("timestamp", "desc"));
+    const unsubscribeCompleted = onSnapshot(completedOrdersQuery, (snapshot) => {
+      setCompletedOrders(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => {
+      unsubscribeNew();
+      unsubscribeCompleted();
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchProducts = async () => {
       const querySnapshot = await getDocs(collection(db, "products"));
       setProducts(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     };
     fetchProducts();
-
-    return () => {
-      unsubscribeOrders();
-    };
   }, []);
 
-  // Add Product
-  const addProduct = async () => {
+  const markAsCompleted = async (order) => {
+    try {
+      await updateDoc(doc(db, "orders", order.id), { completed: true });
+      await addDoc(collection(db, "completedOrders"), order);
+      setOrders((prevOrders) => prevOrders.filter((o) => o.id !== order.id));
+    } catch (error) {
+      console.error("Error marking order as completed:", error);
+    }
+  };
+
+  const handleProductSubmit = async () => {
     if (!productDetails.name || !productDetails.price || !productDetails.image) {
       alert("Please fill all fields!");
       return;
     }
-
     try {
-      await addDoc(collection(db, "products"), {
-        name: productDetails.name,
-        price: parseFloat(productDetails.price),
-        image: productDetails.image,
-      });
-
-      alert("Product added successfully!");
+      if (editId) {
+        await updateDoc(doc(db, "products", editId), productDetails);
+      } else {
+        await addDoc(collection(db, "products"), productDetails);
+      }
       setProductDetails({ name: "", price: "", image: "" });
-      window.location.reload();
-    } catch (error) {
-      console.error("Error adding product:", error);
-      alert("Failed to add product.");
-    }
-  };
-
-  // Edit Product
-  const editProduct = (product) => {
-    setEditId(product.id);
-    setProductDetails({ name: product.name, price: product.price, image: product.image });
-  };
-
-  // Update Product
-  const updateProduct = async () => {
-    if (!editId) return;
-
-    try {
-      const productRef = doc(db, "products", editId);
-      await updateDoc(productRef, {
-        name: productDetails.name,
-        price: parseFloat(productDetails.price),
-        image: productDetails.image,
-      });
-
-      alert("Product updated successfully!");
       setEditId(null);
-      setProductDetails({ name: "", price: "", image: "" });
-      window.location.reload();
     } catch (error) {
-      console.error("Error updating product:", error);
-      alert("Failed to update product.");
+      console.error("Error handling product:", error);
     }
   };
 
-  // Delete Product
   const deleteProduct = async (id) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
-
     try {
       await deleteDoc(doc(db, "products", id));
-      alert("Product deleted successfully!");
-      window.location.reload();
     } catch (error) {
       console.error("Error deleting product:", error);
-      alert("Failed to delete product.");
     }
   };
 
   return (
-    <div>
-      <h2>Admin Panel</h2>
+    <div style={{ padding: isMobile ? "10px" : "20px" }}>
+      <h2>Admin Panel - {showCompleted ? "Completed Orders" : "New Orders"}</h2>
+      <Grid container spacing={2}>
+        <Grid item xs={6}>
+          <Button variant="contained" color="primary" fullWidth onClick={() => setShowCompleted(!showCompleted)}>
+            {showCompleted ? "View New Orders" : "View Completed Orders"}
+          </Button>
+        </Grid>
+        <Grid item xs={6}>
+          <Button variant="contained" color="secondary" fullWidth onClick={() => setView("products")}>Manage Products</Button>
+        </Grid>
+      </Grid>
 
-      {/* Toggle between Orders and Products */}
-      <Button variant="contained" color={view === "orders" ? "primary" : "secondary"} onClick={() => setView("orders")}>
-        View Orders
-      </Button>
-      <Button variant="contained" color={view === "products" ? "primary" : "secondary"} onClick={() => setView("products")}>
-        Manage Products
-      </Button>
-
-      {/* Orders Section */}
       {view === "orders" && (
-        <>
-          <h3>New Orders</h3>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Order ID</TableCell>
-                <TableCell>Total Price</TableCell>
-                <TableCell>Table No.</TableCell>
-                <TableCell>Order Time</TableCell>
-                <TableCell>Order Details</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>{order.id}</TableCell>
-                  <TableCell>₹{order.totalPrice}</TableCell>
-                  <TableCell>{order.tableNumber}</TableCell>
-                  <TableCell>{order.orderTime}</TableCell>
+        <Table size={isMobile ? "small" : "medium"}>
+          <TableHead>
+            <TableRow>
+              <TableCell>Order ID</TableCell>
+              <TableCell>Total Price</TableCell>
+              <TableCell>Table No.</TableCell>
+              <TableCell>Order Details</TableCell>
+              {!showCompleted && <TableCell>Actions</TableCell>}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {(showCompleted ? completedOrders : orders).map((order) => (
+              <TableRow key={order.id}>
+                <TableCell>{order.id}</TableCell>
+                <TableCell>${order.totalPrice}</TableCell>
+                <TableCell>{order.tableNumber}</TableCell>
+                <TableCell>
+                  {order.items.map((item) => (
+                    <div key={item.name}>{item.name} - ${item.price}</div>
+                  ))}
+                </TableCell>
+                {!showCompleted && (
                   <TableCell>
-                    {order.items.map((item) => (
-                      <div key={item.name}>{item.name} - ₹{item.price}</div>
-                    ))}
+                    <Button variant="contained" color="success" onClick={() => markAsCompleted(order)}>
+                      Complete
+                    </Button>
                   </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
-      {/* Products Section */}
       {view === "products" && (
         <>
           <h3>Manage Products</h3>
-
-          {/* Add / Update Product Form */}
-          <TextField
-            label="Product Name"
-            value={productDetails.name}
-            onChange={(e) => setProductDetails({ ...productDetails, name: e.target.value })}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Price"
-            type="number"
-            value={productDetails.price}
-            onChange={(e) => setProductDetails({ ...productDetails, price: e.target.value })}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Image URL"
-            value={productDetails.image}
-            onChange={(e) => setProductDetails({ ...productDetails, image: e.target.value })}
-            fullWidth
-            margin="normal"
-          />
-
-          {/* Show Add or Update button based on edit mode */}
-          {editId ? (
-            <Button variant="contained" color="secondary" onClick={updateProduct}>
-              Update Product
-            </Button>
-          ) : (
-            <Button variant="contained" color="primary" onClick={addProduct}>
-              Add Product
-            </Button>
-          )}
+          <TextField label="Product Name" value={productDetails.name} onChange={(e) => setProductDetails({ ...productDetails, name: e.target.value })} fullWidth margin="normal" />
+          <TextField label="Price" type="number" value={productDetails.price} onChange={(e) => setProductDetails({ ...productDetails, price: e.target.value })} fullWidth margin="normal" />
+          <TextField label="Image URL" value={productDetails.image} onChange={(e) => setProductDetails({ ...productDetails, image: e.target.value })} fullWidth margin="normal" />
+          <Button variant="contained" color={editId ? "secondary" : "primary"} onClick={handleProductSubmit}>{editId ? "Update" : "Add"} Product</Button>
 
           <h3>Product List</h3>
           <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Price</TableCell>
-                <TableCell>Image</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
             <TableBody>
               {products.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>{product.name}</TableCell>
                   <TableCell>₹{product.price}</TableCell>
+                  <TableCell><img src={product.image} alt={product.name} width="50" /></TableCell>
                   <TableCell>
-                    <img src={product.image} alt={product.name} width="50" />
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="contained" color="primary" onClick={() => editProduct(product)}>
-                      Edit
-                    </Button>
-                    <Button variant="contained" color="error" onClick={() => deleteProduct(product.id)}>
-                      Delete
-                    </Button>
+                    <Button variant="contained" color="primary" onClick={() => setEditId(product.id)}>Edit</Button>
+                    <Button variant="contained" color="error" onClick={() => deleteProduct(product.id)}>Delete</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -462,7 +401,6 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
-
 
 
 
