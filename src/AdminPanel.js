@@ -245,31 +245,37 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
-*/
-import React, { useState, useEffect } from "react";
-import { db, collection, addDoc, getDocs, updateDoc, doc } from "./firebase";
+*/import React, { useState, useEffect } from "react";
+import { db, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "./firebase";
 import { Table, TableHead, TableRow, TableCell, TableBody, Button, TextField } from "@mui/material";
 
 function AdminPanel() {
+  const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [productDetails, setProductDetails] = useState({ name: "", price: "", image: "" });
-  const [editId, setEditId] = useState(null); // Track which product is being edited
+  const [editId, setEditId] = useState(null);
+  const [view, setView] = useState("orders"); // "orders" or "products"
 
-  // Fetch products from Firestore
   useEffect(() => {
+    // Fetch Orders
+    const ordersQuery = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+      setOrders(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Fetch Products
     const fetchProducts = async () => {
       const querySnapshot = await getDocs(collection(db, "products"));
-      const productsArray = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setProducts(productsArray);
+      setProducts(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     };
-
     fetchProducts();
+
+    return () => {
+      unsubscribeOrders();
+    };
   }, []);
 
-  // Add New Product
+  // Add Product
   const addProduct = async () => {
     if (!productDetails.name || !productDetails.price || !productDetails.image) {
       alert("Please fill all fields!");
@@ -285,14 +291,14 @@ function AdminPanel() {
 
       alert("Product added successfully!");
       setProductDetails({ name: "", price: "", image: "" });
-      window.location.reload(); // Reload to fetch new product list
+      window.location.reload();
     } catch (error) {
       console.error("Error adding product:", error);
-      alert("Failed to add product. Try again.");
+      alert("Failed to add product.");
     }
   };
 
-  // Set product details for editing
+  // Edit Product
   const editProduct = (product) => {
     setEditId(product.id);
     setProductDetails({ name: product.name, price: product.price, image: product.image });
@@ -301,6 +307,7 @@ function AdminPanel() {
   // Update Product
   const updateProduct = async () => {
     if (!editId) return;
+
     try {
       const productRef = doc(db, "products", editId);
       await updateDoc(productRef, {
@@ -312,10 +319,24 @@ function AdminPanel() {
       alert("Product updated successfully!");
       setEditId(null);
       setProductDetails({ name: "", price: "", image: "" });
-      window.location.reload(); // Reload to show updated product
+      window.location.reload();
     } catch (error) {
       console.error("Error updating product:", error);
-      alert("Failed to update product. Try again.");
+      alert("Failed to update product.");
+    }
+  };
+
+  // Delete Product
+  const deleteProduct = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+
+    try {
+      await deleteDoc(doc(db, "products", id));
+      alert("Product deleted successfully!");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Failed to delete product.");
     }
   };
 
@@ -323,73 +344,125 @@ function AdminPanel() {
     <div>
       <h2>Admin Panel</h2>
 
-      {/* Form for adding or updating a product */}
-      <TextField
-        label="Product Name"
-        value={productDetails.name}
-        onChange={(e) => setProductDetails({ ...productDetails, name: e.target.value })}
-        fullWidth
-        margin="normal"
-      />
-      <TextField
-        label="Price"
-        type="number"
-        value={productDetails.price}
-        onChange={(e) => setProductDetails({ ...productDetails, price: e.target.value })}
-        fullWidth
-        margin="normal"
-      />
-      <TextField
-        label="Image URL"
-        value={productDetails.image}
-        onChange={(e) => setProductDetails({ ...productDetails, image: e.target.value })}
-        fullWidth
-        margin="normal"
-      />
+      {/* Toggle between Orders and Products */}
+      <Button variant="contained" color={view === "orders" ? "primary" : "secondary"} onClick={() => setView("orders")}>
+        View Orders
+      </Button>
+      <Button variant="contained" color={view === "products" ? "primary" : "secondary"} onClick={() => setView("products")}>
+        Manage Products
+      </Button>
 
-      {/* Show Add or Update button based on edit mode */}
-      {editId ? (
-        <Button variant="contained" color="secondary" onClick={updateProduct}>
-          Update Product
-        </Button>
-      ) : (
-        <Button variant="contained" color="primary" onClick={addProduct}>
-          Add Product
-        </Button>
+      {/* Orders Section */}
+      {view === "orders" && (
+        <>
+          <h3>New Orders</h3>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Order ID</TableCell>
+                <TableCell>Total Price</TableCell>
+                <TableCell>Table No.</TableCell>
+                <TableCell>Order Time</TableCell>
+                <TableCell>Order Details</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {orders.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>{order.id}</TableCell>
+                  <TableCell>₹{order.totalPrice}</TableCell>
+                  <TableCell>{order.tableNumber}</TableCell>
+                  <TableCell>{order.orderTime}</TableCell>
+                  <TableCell>
+                    {order.items.map((item) => (
+                      <div key={item.name}>{item.name} - ₹{item.price}</div>
+                    ))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
       )}
 
-      <h3>Product List</h3>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Price</TableCell>
-            <TableCell>Image</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {products.map((product) => (
-            <TableRow key={product.id}>
-              <TableCell>{product.name}</TableCell>
-              <TableCell>₹{product.price}</TableCell>
-              <TableCell>
-                <img src={product.image} alt={product.name} width="50" />
-              </TableCell>
-              <TableCell>
-                <Button variant="contained" color="primary" onClick={() => editProduct(product)}>
-                  Edit
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {/* Products Section */}
+      {view === "products" && (
+        <>
+          <h3>Manage Products</h3>
+
+          {/* Add / Update Product Form */}
+          <TextField
+            label="Product Name"
+            value={productDetails.name}
+            onChange={(e) => setProductDetails({ ...productDetails, name: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Price"
+            type="number"
+            value={productDetails.price}
+            onChange={(e) => setProductDetails({ ...productDetails, price: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Image URL"
+            value={productDetails.image}
+            onChange={(e) => setProductDetails({ ...productDetails, image: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+
+          {/* Show Add or Update button based on edit mode */}
+          {editId ? (
+            <Button variant="contained" color="secondary" onClick={updateProduct}>
+              Update Product
+            </Button>
+          ) : (
+            <Button variant="contained" color="primary" onClick={addProduct}>
+              Add Product
+            </Button>
+          )}
+
+          <h3>Product List</h3>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Price</TableCell>
+                <TableCell>Image</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {products.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>{product.name}</TableCell>
+                  <TableCell>₹{product.price}</TableCell>
+                  <TableCell>
+                    <img src={product.image} alt={product.name} width="50" />
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="contained" color="primary" onClick={() => editProduct(product)}>
+                      Edit
+                    </Button>
+                    <Button variant="contained" color="error" onClick={() => deleteProduct(product.id)}>
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
+      )}
     </div>
   );
 }
 
 export default AdminPanel;
+
 
 
 
