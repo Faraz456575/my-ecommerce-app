@@ -248,8 +248,8 @@ export default AdminPanel;
 */
 
 import React, { useState, useEffect } from "react";
-import { db, collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc } from "./firebase";
-import { Table, TableHead, TableRow, TableCell, TableBody, Button } from "@mui/material";
+import { db, collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, deleteDoc } from "./firebase";
+import { Table, TableHead, TableRow, TableCell, TableBody, Button, Typography } from "@mui/material";
 
 function AdminPanel() {
   const [orders, setOrders] = useState([]);
@@ -257,23 +257,18 @@ function AdminPanel() {
   const [showCompleted, setShowCompleted] = useState(false); // Toggle for Completed Orders
 
   useEffect(() => {
-    // Fetch NEW orders (not completed)
+    // Fetch NEW (pending) orders
     const newOrdersQuery = query(collection(db, "orders"), orderBy("timestamp", "desc"));
-
     const unsubscribeNew = onSnapshot(newOrdersQuery, (snapshot) => {
-      const ordersData = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .filter((order) => !order.completed); // Show only pending orders
-
+      const ordersData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })).filter((order) => order.status !== "completed"); // Only show pending orders
       setOrders(ordersData);
     });
 
     // Fetch COMPLETED orders
     const completedOrdersQuery = query(collection(db, "completedOrders"), orderBy("timestamp", "desc"));
-
     const unsubscribeCompleted = onSnapshot(completedOrdersQuery, (snapshot) => {
       const completedOrdersData = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -292,49 +287,54 @@ function AdminPanel() {
   const markAsCompleted = async (order) => {
     try {
       const orderRef = doc(db, "orders", order.id);
-      await updateDoc(orderRef, { completed: true });
 
       // Move order to "completedOrders" collection
-      await addDoc(collection(db, "completedOrders"), order);
+      await addDoc(collection(db, "completedOrders"), { ...order, status: "completed" });
 
-      // Remove from "orders" collection
+      // Delete from "orders" collection (since it's now completed)
+      await deleteDoc(orderRef);
+
+      // Update UI
       setOrders((prevOrders) => prevOrders.filter((o) => o.id !== order.id));
     } catch (error) {
       console.error("Error marking order as completed:", error);
+      alert("Failed to complete order. Please try again.");
     }
   };
 
   return (
     <div>
-      <h2>Admin Panel - {showCompleted ? "Completed Orders" : "New Orders"}</h2>
+      <Typography variant="h4" gutterBottom>
+        Admin Panel - {showCompleted ? "Completed Orders" : "New Orders"}
+      </Typography>
 
-      {/* Button to toggle between New Orders and Completed Orders */}
+      {/* Toggle Button */}
       <Button variant="contained" color="primary" onClick={() => setShowCompleted(!showCompleted)}>
         {showCompleted ? "View New Orders" : "View Completed Orders"}
       </Button>
 
-      <Table>
+      <Table sx={{ marginTop: 2 }}>
         <TableHead>
           <TableRow>
-            <TableCell>Order ID</TableCell>
-            <TableCell>Total Price</TableCell>
-            <TableCell>Table No.</TableCell>
-            <TableCell>Order Time</TableCell>
-            <TableCell>Order Details</TableCell>
-            {!showCompleted && <TableCell>Actions</TableCell>}
+            <TableCell><strong>Order ID</strong></TableCell>
+            <TableCell><strong>Total Price</strong></TableCell>
+            <TableCell><strong>Table No.</strong></TableCell>
+            <TableCell><strong>Order Time</strong></TableCell>
+            <TableCell><strong>Order Details</strong></TableCell>
+            {!showCompleted && <TableCell><strong>Actions</strong></TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
           {(showCompleted ? completedOrders : orders).map((order) => (
             <TableRow key={order.id}>
               <TableCell>{order.id}</TableCell>
-              <TableCell>${order.totalPrice}</TableCell>
+              <TableCell>₹{order.totalPrice.toFixed(2)}</TableCell>
               <TableCell>{order.tableNumber}</TableCell>
               <TableCell>{order.orderTime}</TableCell>
               <TableCell>
-                {order.items.map((item) => (
-                  <div key={item.name}>
-                    {item.name} - ${item.price}
+                {order.items.map((item, index) => (
+                  <div key={index}>
+                    {item.name} - ₹{item.price.toFixed(2)}
                   </div>
                 ))}
               </TableCell>
@@ -349,12 +349,9 @@ function AdminPanel() {
           ))}
         </TableBody>
       </Table>
-
-
-
-      
     </div>
   );
 }
 
 export default AdminPanel;
+
