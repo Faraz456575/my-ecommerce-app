@@ -246,112 +246,77 @@ function AdminPanel() {
 
 export default AdminPanel;
 */
-
-import React, { useState, useEffect } from "react";
-import { db, collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, deleteDoc } from "./firebase";
-import { Table, TableHead, TableRow, TableCell, TableBody, Button, Typography } from "@mui/material";
+import React, { useState } from "react";
+import { db, collection, addDoc } from "./firebase"; // Firestore functions
+import { Button, TextField } from "@mui/material";
 
 function AdminPanel() {
-  const [orders, setOrders] = useState([]);
-  const [completedOrders, setCompletedOrders] = useState([]);
-  const [showCompleted, setShowCompleted] = useState(false); // Toggle for Completed Orders
+  const [productDetails, setProductDetails] = useState({
+    name: "",
+    price: "",
+    image: "",
+  });
 
-  useEffect(() => {
-    // Fetch NEW (pending) orders
-    const newOrdersQuery = query(collection(db, "orders"), orderBy("timestamp", "desc"));
-    const unsubscribeNew = onSnapshot(newOrdersQuery, (snapshot) => {
-      const ordersData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })).filter((order) => order.status !== "completed"); // Only show pending orders
-      setOrders(ordersData);
-    });
+  const addProduct = async () => {
+    if (!productDetails.name || !productDetails.price || !productDetails.image) {
+      alert("Please fill all fields!");
+      return;
+    }
 
-    // Fetch COMPLETED orders
-    const completedOrdersQuery = query(collection(db, "completedOrders"), orderBy("timestamp", "desc"));
-    const unsubscribeCompleted = onSnapshot(completedOrdersQuery, (snapshot) => {
-      const completedOrdersData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setCompletedOrders(completedOrdersData);
-    });
-
-    return () => {
-      unsubscribeNew();
-      unsubscribeCompleted();
-    };
-  }, []);
-
-  // Function to mark order as completed
-  const markAsCompleted = async (order) => {
     try {
-      const orderRef = doc(db, "orders", order.id);
+      await addDoc(collection(db, "products"), {
+        name: productDetails.name,
+        price: parseFloat(productDetails.price), // Ensure price is stored as number
+        image: productDetails.image,
+      });
 
-      // Move order to "completedOrders" collection
-      await addDoc(collection(db, "completedOrders"), { ...order, status: "completed" });
-
-      // Delete from "orders" collection (since it's now completed)
-      await deleteDoc(orderRef);
-
-      // Update UI
-      setOrders((prevOrders) => prevOrders.filter((o) => o.id !== order.id));
+      alert("Product added successfully!");
+      setProductDetails({ name: "", price: "", image: "" }); // Reset form
     } catch (error) {
-      console.error("Error marking order as completed:", error);
-      alert("Failed to complete order. Please try again.");
+      console.error("Error adding product:", error);
+      alert("Failed to add product. Try again.");
     }
   };
 
   return (
     <div>
-      <Typography variant="h4" gutterBottom>
-        Admin Panel - {showCompleted ? "Completed Orders" : "New Orders"}
-      </Typography>
+      <h2>Admin Panel - Add Product</h2>
 
-      {/* Toggle Button */}
-      <Button variant="contained" color="primary" onClick={() => setShowCompleted(!showCompleted)}>
-        {showCompleted ? "View New Orders" : "View Completed Orders"}
+      <TextField
+        label="Product Name"
+        variant="outlined"
+        fullWidth
+        value={productDetails.name}
+        onChange={(e) => setProductDetails({ ...productDetails, name: e.target.value })}
+        margin="normal"
+      />
+
+      <TextField
+        label="Price"
+        type="number"
+        variant="outlined"
+        fullWidth
+        value={productDetails.price}
+        onChange={(e) => setProductDetails({ ...productDetails, price: e.target.value })}
+        margin="normal"
+      />
+
+      <TextField
+        label="Image URL"
+        variant="outlined"
+        fullWidth
+        value={productDetails.image}
+        onChange={(e) => setProductDetails({ ...productDetails, image: e.target.value })}
+        margin="normal"
+      />
+
+      <Button variant="contained" color="primary" onClick={addProduct} style={{ marginTop: "10px" }}>
+        Add Product
       </Button>
-
-      <Table sx={{ marginTop: 2 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell><strong>Order ID</strong></TableCell>
-            <TableCell><strong>Total Price</strong></TableCell>
-            <TableCell><strong>Table No.</strong></TableCell>
-            <TableCell><strong>Order Time</strong></TableCell>
-            <TableCell><strong>Order Details</strong></TableCell>
-            {!showCompleted && <TableCell><strong>Actions</strong></TableCell>}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {(showCompleted ? completedOrders : orders).map((order) => (
-            <TableRow key={order.id}>
-              <TableCell>{order.id}</TableCell>
-              <TableCell>₹{order.totalPrice.toFixed(2)}</TableCell>
-              <TableCell>{order.tableNumber}</TableCell>
-              <TableCell>{order.orderTime}</TableCell>
-              <TableCell>
-                {order.items.map((item, index) => (
-                  <div key={index}>
-                    {item.name} - ₹{item.price.toFixed(2)}
-                  </div>
-                ))}
-              </TableCell>
-              {!showCompleted && (
-                <TableCell>
-                  <Button variant="contained" color="success" onClick={() => markAsCompleted(order)}>
-                    Mark as Completed
-                  </Button>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     </div>
   );
 }
 
 export default AdminPanel;
+
 
