@@ -47,16 +47,7 @@ export { auth, db, collection, addDoc, onSnapshot, query, orderBy };  // Export 
 // Import necessary Firebase SDK components
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  doc, 
-  updateDoc, 
-} from "firebase/firestore";
+import { getFirestore } from "firebase/firestore"; // Get Firestore method
 
 // Your Firebase config (replace with your own credentials)
 const firebaseConfig = {
@@ -65,7 +56,7 @@ const firebaseConfig = {
   projectId: "website-arabian",
   storageBucket: "website-arabian.firebasestorage.app",
   messagingSenderId: "808485065587",
-  appId: "1:808485065587:web:92d686dc02c5d136366b06"
+  appId: "1:808485065587:web:92d686dc02c5d136366b06",
 };
 
 // Initialize Firebase
@@ -78,5 +69,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Export Firebase modules and functions
-export { auth, db, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc };
+export { auth, db };
+
 
