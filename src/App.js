@@ -3,11 +3,11 @@ import { Routes, Route, Link, Navigate } from "react-router-dom";
 import { AppBar, Toolbar, Button } from "@mui/material";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { db, collection, addDoc } from "./firebase";
 import ProductList from "./ProductList";
 import Cart from "./Cart";
 import AdminPanel from "./AdminPanel";
 import Login from "./Login";
+import { addDoc, collection } from "./firebase";
 
 function App() {
   const [cart, setCart] = useState([]);
@@ -52,6 +52,20 @@ function App() {
     }
   };
 
+  // Add product function (for Admin)
+  const addProduct = async (product) => {
+    try {
+      await addDoc(collection(db, "products"), {
+        name: product.name,
+        price: product.price,
+        image: product.image, // Use the actual image URL
+      });
+      alert("Product added successfully! Refresh the page to see it.");
+    } catch (error) {
+      console.error("Error adding product:", error);
+    }
+  };
+
   return (
     <div>
       {/* Navigation Bar */}
@@ -60,7 +74,9 @@ function App() {
           <Button color="inherit" component={Link} to="/">Home</Button>
           <Button color="inherit" component={Link} to="/cart">Cart ({cart.length})</Button>
           {user ? (
-            <Button color="inherit" component={Link} to="/admin">Admin Panel</Button>
+            <>
+              <Button color="inherit" component={Link} to="/admin">Admin Panel</Button>
+            </>
           ) : (
             <Button color="inherit" component={Link} to="/login">Login</Button>
           )}
@@ -73,10 +89,11 @@ function App() {
         <Route path="/cart" element={<Cart cart={cart} placeOrder={placeOrder} />} />
         <Route path="/table/:tableNumber" element={<ProductList addToCart={addToCart} />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/admin" element={user ? <AdminPanel /> : <Navigate to="/login" />} />
+        <Route path="/admin" element={user ? <AdminPanel addProduct={addProduct} /> : <Navigate to="/login" />} />
       </Routes>
     </div>
   );
 }
 
 export default App;
+
