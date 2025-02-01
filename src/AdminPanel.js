@@ -246,17 +246,30 @@ function AdminPanel() {
 
 export default AdminPanel;
 */
-import React, { useState } from "react";
-import { db, collection, addDoc } from "./firebase"; // Firestore functions
-import { Button, TextField } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { db, collection, addDoc, getDocs, updateDoc, doc } from "./firebase";
+import { Table, TableHead, TableRow, TableCell, TableBody, Button, TextField } from "@mui/material";
 
 function AdminPanel() {
-  const [productDetails, setProductDetails] = useState({
-    name: "",
-    price: "",
-    image: "",
-  });
+  const [products, setProducts] = useState([]);
+  const [productDetails, setProductDetails] = useState({ name: "", price: "", image: "" });
+  const [editId, setEditId] = useState(null); // Track which product is being edited
 
+  // Fetch products from Firestore
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      const productsArray = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setProducts(productsArray);
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Add New Product
   const addProduct = async () => {
     if (!productDetails.name || !productDetails.price || !productDetails.image) {
       alert("Please fill all fields!");
@@ -266,57 +279,117 @@ function AdminPanel() {
     try {
       await addDoc(collection(db, "products"), {
         name: productDetails.name,
-        price: parseFloat(productDetails.price), // Ensure price is stored as number
+        price: parseFloat(productDetails.price),
         image: productDetails.image,
       });
 
       alert("Product added successfully!");
-      setProductDetails({ name: "", price: "", image: "" }); // Reset form
+      setProductDetails({ name: "", price: "", image: "" });
+      window.location.reload(); // Reload to fetch new product list
     } catch (error) {
       console.error("Error adding product:", error);
       alert("Failed to add product. Try again.");
     }
   };
 
+  // Set product details for editing
+  const editProduct = (product) => {
+    setEditId(product.id);
+    setProductDetails({ name: product.name, price: product.price, image: product.image });
+  };
+
+  // Update Product
+  const updateProduct = async () => {
+    if (!editId) return;
+    try {
+      const productRef = doc(db, "products", editId);
+      await updateDoc(productRef, {
+        name: productDetails.name,
+        price: parseFloat(productDetails.price),
+        image: productDetails.image,
+      });
+
+      alert("Product updated successfully!");
+      setEditId(null);
+      setProductDetails({ name: "", price: "", image: "" });
+      window.location.reload(); // Reload to show updated product
+    } catch (error) {
+      console.error("Error updating product:", error);
+      alert("Failed to update product. Try again.");
+    }
+  };
+
   return (
     <div>
-      <h2>Admin Panel - Add Product</h2>
+      <h2>Admin Panel</h2>
 
+      {/* Form for adding or updating a product */}
       <TextField
         label="Product Name"
-        variant="outlined"
-        fullWidth
         value={productDetails.name}
         onChange={(e) => setProductDetails({ ...productDetails, name: e.target.value })}
+        fullWidth
         margin="normal"
       />
-
       <TextField
         label="Price"
         type="number"
-        variant="outlined"
-        fullWidth
         value={productDetails.price}
         onChange={(e) => setProductDetails({ ...productDetails, price: e.target.value })}
+        fullWidth
         margin="normal"
       />
-
       <TextField
         label="Image URL"
-        variant="outlined"
-        fullWidth
         value={productDetails.image}
         onChange={(e) => setProductDetails({ ...productDetails, image: e.target.value })}
+        fullWidth
         margin="normal"
       />
 
-      <Button variant="contained" color="primary" onClick={addProduct} style={{ marginTop: "10px" }}>
-        Add Product
-      </Button>
+      {/* Show Add or Update button based on edit mode */}
+      {editId ? (
+        <Button variant="contained" color="secondary" onClick={updateProduct}>
+          Update Product
+        </Button>
+      ) : (
+        <Button variant="contained" color="primary" onClick={addProduct}>
+          Add Product
+        </Button>
+      )}
+
+      <h3>Product List</h3>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Name</TableCell>
+            <TableCell>Price</TableCell>
+            <TableCell>Image</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {products.map((product) => (
+            <TableRow key={product.id}>
+              <TableCell>{product.name}</TableCell>
+              <TableCell>₹{product.price}</TableCell>
+              <TableCell>
+                <img src={product.image} alt={product.name} width="50" />
+              </TableCell>
+              <TableCell>
+                <Button variant="contained" color="primary" onClick={() => editProduct(product)}>
+                  Edit
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
 
 export default AdminPanel;
+
 
 
