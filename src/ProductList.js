@@ -11,9 +11,9 @@ function ProductList({ addToCart }) {
     const fetchProducts = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "products"));
-        const productsArray = querySnapshot.docs.map(doc => ({
-          id: doc.id, 
-          ...doc.data()
+        const productsArray = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
         }));
         setProducts(productsArray);
       } catch (error) {
@@ -29,7 +29,7 @@ function ProductList({ addToCart }) {
       await addDoc(collection(db, "products"), {
         name: "Breast Cubes 1Kg",
         price: 520,
-        image: "https://your-image-url.com"
+        image: "https://your-image-url.com",
       });
       alert("Product added successfully! Refresh the page to see it.");
     } catch (error) {
@@ -40,7 +40,12 @@ function ProductList({ addToCart }) {
   return (
     <div>
       {/* Button to Add Product */}
-      <Button variant="contained" color="secondary" onClick={addProduct} style={{ marginBottom: "20px" }}>
+      <Button
+        variant="contained"
+        color="secondary"
+        onClick={addProduct}
+        style={{ marginBottom: "20px" }}
+      >
         Add Product
       </Button>
 
@@ -60,10 +65,22 @@ function ProductCard({ product, addToCart }) {
     <Grid item xs={12} sm={6} md={4} lg={3}>
       <Card>
         <CardContent>
-          <img src={product.image} alt={product.name} style={{ width: "100%", height: "150px", objectFit: "cover" }} />
+          <img
+            src={product.image}
+            alt={product.name}
+            style={{
+              width: "100%",
+              height: "150px",
+              objectFit: "cover",
+            }}
+          />
           <Typography variant="h5">{product.name}</Typography>
           <Typography variant="body2">Price: ₹{product.price}</Typography>
-          <Button variant="contained" color="primary" onClick={() => addToCart(product)}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => addToCart(product)}
+          >
             Add to Cart
           </Button>
         </CardContent>
@@ -73,6 +90,7 @@ function ProductCard({ product, addToCart }) {
 }
 
 export default ProductList;
+
 
 
 
